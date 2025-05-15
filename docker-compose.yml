@@ -1,0 +1,64 @@
+version: "3.4"
+
+services:
+  mysql:
+    image: mysql:9
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: Test@123
+      MYSQL_DATABASE: expenses_tracker
+    volumes:
+      - mysql-data-javapp:/var/lib/mysql
+    networks:
+      - net-javapp
+    restart: always
+    healthcheck:
+      test: ["CMD","mysqladmin","ping","-h","localhost","-uroot","-pTest@123"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+  
+  javapp:
+    container_name: javapp_cont
+    build:
+      context: .
+    environment:
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_URL:  "jdbc:mysql://mysql:3306/expenses_tracker?allowPublicKeyRetrieval=true&useSSL=false"
+      SPRING_DATASOURCE_PASSWORD: Test@123
+    networks:
+      - net-javapp
+    depends_on:
+      - mysql
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL","curl -f http://localhost:8080 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  nginx:
+    container_name: nginx_cont
+    build:
+      context: ./nginx/
+    networks:
+      - net-javapp
+    ports:
+      - 80:80
+    depends_on:
+      - javapp
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL","curl -f http://localhost:80 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+networks:
+  net-javapp:
+
+volumes:
+  mysql-data-javapp:
